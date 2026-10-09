@@ -30,10 +30,10 @@ plt.rcParams.update({
 })
 
 
-def finish(fig, ax, title, sub, name):
-    sub = textwrap.fill(sub, 64)  # keep the subtitle well inside the figure edge
+def finish(fig, ax, title, sub, name, one_line=False):
+    sub = sub if one_line else textwrap.fill(sub, 64)  # wrapped subtitles stay well inside the figure edge
     ax.set_title(title, pad=16 + 17 * (sub.count("\n") + 1))
-    ax.text(0, 1.02, sub, transform=ax.transAxes, color=INK2, fontsize=11.5, va="bottom", linespacing=1.3)
+    ax.text(0, 1.02, sub, transform=ax.transAxes, color=INK2, fontsize=10.5 if one_line else 11.5, va="bottom", linespacing=1.3)
     fig.tight_layout()
     OUT.mkdir(exist_ok=True)
     fig.savefig(OUT / name, dpi=170)
@@ -56,7 +56,7 @@ def main():
     ax.set_xlim(right=rets.index[-1] + pd.Timedelta(days=90))
     ax.yaxis.set_major_formatter(lambda v, _: f"${v:.1f}")
     ax.legend(loc="upper left")
-    finish(fig, ax, "CAD $1 over 5 years", "Backtest, CAD terms, daily rebalanced, holdings picked with hindsight", "1_growth_of_1.png")
+    finish(fig, ax, "CAD $1 over 5 years", "Backtest, CAD terms, daily rebalanced, holdings picked with hindsight", "1_growth_of_1.png", one_line=True)
 
     # 2. rolling 105-day Sharpe
     def roll(r):
