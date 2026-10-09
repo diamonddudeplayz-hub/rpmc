@@ -21,3 +21,11 @@ TBF effect (current_8 vs the same book with SHV instead of TBF): +0.3 Sharpe in 
 - Holdings were picked with hindsight (NVDA, AVGO, LNG have been big winners), so the portfolio's historical Sharpe is flattered.
 - Regime splits are descriptive; labels use what happened over each block, not a forecast.
 - NVDA/AVGO correlation is ~0.6, ITRI ~0.27 with NVDA/AVGO/XLV. Average pairwise correlation (~0.05) is low mainly because of GLD/SHV/TBF/LNG.
+
+## Follow-up (`python analysis.py`)
+- Risk is concentrated: ITRI + NVDA + AVGO = ~80% of portfolio variance on 37% of the weight. GLD, XLV, TBF, SHV are ~0-6% each.
+- ITRI is not low-vol (41% vs LNG 30%). Inverse-vol sizing would put LNG above ITRI. Pitch ITRI as conviction/catalyst-sized, not vol-sized.
+- SHV does not change Sharpe (1.51 vs 1.52 without it): mixing in the risk-free asset scales return and vol equally.
+- Hormuz headline days (9 days from the pasted tracker): LNG +3.1% avg on escalation, -3.2% on de-escalation; TBF +0.9 / -0.6; GLD -0.4 / +1.1.
+  Portfolio net: +0.5% / +0.2%, so roughly neutral to headlines.
+- Sharpe by year, portfolio vs benchmark: 2022 0.29 vs -0.95, 2023 2.62 vs 1.14, 2024 3.03 vs 2.15, 2025 0.68 vs 1.32, 2026 YTD 1.21 vs 1.10.
