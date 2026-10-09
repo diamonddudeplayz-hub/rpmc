@@ -38,3 +38,11 @@ TBF effect (current_8 vs the same book with SHV instead of TBF): +0.3 Sharpe in 
 - ITRI biggest daily moves, last 2y: +26.2% (2026-07-28), -21.1% (2025-10-30), -10.0% (2025-07-31). At 15% weight a -21% day is -3.2% of the portfolio.
   Now $84.23 vs $107.02 on Jul 28 and $99.66 on Jul 31.
 - No ADBE price file in the repo yet, so ADBE vol/correlation is untested.
+
+## Update: everything is now measured total return
+- SHV: LSEG total-return export. NVDA, LNG, AVGO: exact total return from the dividend tables in `backtest/dividends.csv` (ex-dates, split-adjusted).
+- SPY, XBB.TO, IEMG, XLV, TBF, XIC.TO: weekly total-return exports (`ROLLING PERFORMANCE*.xlsx`); weekly income spread over that week's trading days.
+  Measured yields: SPY 1.33%, XLV 1.62%, IEMG 2.76%, XIC.TO 2.74%, XBB.TO 3.17%, TBF 2.85% (TBF had been counted as zero income).
+- `final_no_adbe`: Sharpe 1.54 (5y) / 1.29 (2y), max drawdown -12.2% / -10.6%. RPMC benchmark: 0.89 / 1.23, -15.0% / -10.8%.
+  Beats the benchmark in 80% (5y) / 49% (2y) of 105-day windows. `current_8`: 1.58 / 1.18.
+- Charts in `charts/` regenerated on these numbers. `rpmc_calendar.ics` has trade-by dates and catalyst dates.
