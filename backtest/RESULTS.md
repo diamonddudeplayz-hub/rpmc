@@ -1,3 +1,5 @@
+> Latest numbers are in the last section ("everything is now measured total return"). Earlier sections are kept as a log.
+
 # Backtest results (LSEG daily data to 2026-10-08, CAD terms)
 
 Reproduce: `cd backtest && python backtest.py build && python backtest.py run --years 5 --income`

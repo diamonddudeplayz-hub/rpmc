@@ -4,6 +4,8 @@
 
 Book = portfolio.json["final_no_adbe"]. All numbers are backtests in CAD terms, picked with hindsight.
 """
+import textwrap
+
 import matplotlib
 
 matplotlib.use("Agg")
@@ -29,8 +31,9 @@ plt.rcParams.update({
 
 
 def finish(fig, ax, title, sub, name):
-    ax.set_title(title, pad=30)
-    ax.text(0, 1.03, sub, transform=ax.transAxes, color=INK2, fontsize=12, va="bottom")
+    sub = textwrap.fill(sub, 64)  # keep the subtitle well inside the figure edge
+    ax.set_title(title, pad=16 + 17 * (sub.count("\n") + 1))
+    ax.text(0, 1.02, sub, transform=ax.transAxes, color=INK2, fontsize=11.5, va="bottom", linespacing=1.3)
     fig.tight_layout()
     OUT.mkdir(exist_ok=True)
     fig.savefig(OUT / name, dpi=170)
@@ -69,7 +72,7 @@ def main():
     ax.legend(loc="upper left")
     ax.set_ylabel("Sharpe of the trailing 105 days")
     finish(fig, ax, "What a competition-length window looks like",
-           f"Every 105-day stretch since 2022: our book beat the benchmark in {np.mean(j[0] > j[1]):.0%} of them, and lost money in {np.mean(rm < 0):.0%}", "2_rolling_105d_sharpe.png")
+           f"Every 105-day stretch since 2022: our book beat the benchmark in {np.mean(j[0] > j[1]):.0%} of them and lost money in {np.mean(rm < 0):.0%}", "2_rolling_105d_sharpe.png")
 
     # 3. weight vs share of risk
     w = pd.Series(book)
@@ -87,7 +90,7 @@ def main():
     ax.set_yticklabels(risk.index)
     ax.grid(axis="y", visible=False)
     ax.set_xlabel("% of portfolio")
-    ax.legend(loc="lower right")
+    ax.legend(loc="upper right")
     finish(fig, ax, "Weight vs where the risk actually sits", "Share of portfolio variance, 5-year daily data. GLD, XLV, TBF are the diversifiers", "3_weight_vs_risk.png")
 
     # 4. Hormuz headline days
@@ -111,7 +114,7 @@ def main():
     ax.set_ylabel("Average same-day return")
     ax.set_ylim(min(e.min(), d.min()) - 1, max(e.max(), d.max()) + 1)
     ax.legend(loc="upper right")
-    finish(fig, ax, "Hormuz headline days: the book nets out", "LNG and TBF win on escalation, GLD on de-escalation. Few days, so treat as a sketch", "4_hormuz_headline_days.png")
+    finish(fig, ax, "Hormuz headline days: LNG and GLD offset", "LNG and TBF win on escalation, GLD on de-escalation, so the book ends up roughly flat. Nine days, treat as a sketch", "4_hormuz_headline_days.png")
     print("wrote", sorted(p.name for p in OUT.glob("*.png")))
 
 
