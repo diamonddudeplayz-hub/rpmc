@@ -48,3 +48,9 @@ TBF effect (current_8 vs the same book with SHV instead of TBF): +0.3 Sharpe in 
 - `final_no_adbe`: Sharpe 1.54 (5y) / 1.29 (2y), max drawdown -12.2% / -10.6%. RPMC benchmark: 0.89 / 1.23, -15.0% / -10.8%.
   Beats the benchmark in 80% (5y) / 49% (2y) of 105-day windows. `current_8`: 1.58 / 1.18.
 - Charts in `charts/` regenerated on these numbers. `rpmc_calendar.ics` has trade-by dates and catalyst dates.
+
+## Jiseop's book (posted Oct 9, `portfolio.json["jiseop"]`)
+LLY 15, GLD 15, LNG 15, JAAA 14, RY.TO 12, WMT 8, NVDA 7, XIC.TO 6, VOO 5, EFA 3. His reported 5y monthly Sharpe 2.48 (CAGR 27%, implied vol ~9%);
+our final book on the same monthly basis is 1.80 (24.3%, 10.3%); benchmark 0.90 (he got 0.88). To compare properly we need total-return exports for
+LLY, WMT, RY.TO, JAAA, VOO, EFA (same layout as `shv total return.xlsx`, or weekly Rolling Performance + price files), then:
+`python backtest.py build && python backtest.py run --years 5 --income --portfolios final_no_adbe jiseop`, plus `robustness.py` for the split-in-half check.

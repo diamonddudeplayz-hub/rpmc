@@ -69,7 +69,8 @@ def read_lseg(path):
 
 
 # sheet-name keywords (sheet names are cut at 31 chars) -> ticker, for weekly 'Rolling Performance' exports
-ROLLING_NAMES = [("TSX", "XIC.TO"), ("S&P 500", "SPY"), ("UNIVERSE BOND", "XBB.TO"), ("MSCI EMERGING", "IEMG"),
+ROLLING_NAMES = [("TSX", "XIC.TO"), ("VANGUARD", "VOO"), ("MSCI EAFE", "EFA"), ("AAA CLO", "JAAA"), ("ELI LILLY", "LLY"),
+                 ("WALMART", "WMT"), ("ROYAL BANK", "RY.TO"), ("S&P 500", "SPY"), ("UNIVERSE BOND", "XBB.TO"), ("MSCI EMERGING", "IEMG"),
                  ("HEALTH CARE SELECT", "XLV"), ("SHORT 20", "TBF"), ("CHENIERE", "LNG"), ("BROADCOM", "AVGO"), ("NVIDIA", "NVDA")]  # matched against the full fund name in cell A1
 
 
