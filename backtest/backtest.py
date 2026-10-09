@@ -67,10 +67,25 @@ def read_lseg(path):
     return s[~s.index.duplicated()].sort_index()
 
 
+# sheet-name keywords (sheet names are cut at 31 chars) -> ticker, for weekly 'Rolling Performance' exports
+ROLLING_NAMES = [("TSX", "XIC.TO"), ("S&P 500", "SPY"), ("UNIVERSE BOND", "XBB.TO"), ("MSCI EMERGING", "IEMG"),
+                 ("HEALTH CARE SELECT", "XLV"), ("SHORT 20", "TBF"), ("CHENIERE", "LNG"), ("BROADCOM", "AVGO"), ("NVIDIA", "NVDA")]
+
+
+def read_rolling(f):
+    """Weekly total-return % per week-ending date (LSEG Rolling Performance). Returns (sheet name, Series of decimals)."""
+    sheet = pd.ExcelFile(f).sheet_names[0]
+    d = pd.read_excel(f, header=None, skiprows=7)[[1, 2]].dropna()
+    return sheet, pd.Series(d[2].astype(float).values / 100, index=pd.to_datetime(d[1]))
+
+
 def build():
-    px, rt, tr = {}, {}, {}
+    px, rt, tr, weekly = {}, {}, {}, {}
     for f in sorted(XLSX_DIR.glob("*.xlsx")):
-        head = pd.read_excel(f, header=None, nrows=2)
+        head = pd.read_excel(f, header=None, nrows=6)
+        if str(head.iloc[4, 0]).strip() == "Rolling Performance":
+            weekly[f.name] = read_rolling(f)
+            continue
         ric = str(head.iloc[0, 1]).split(" ")[0]
         s = read_lseg(f)
         if str(head.iloc[1, 1]).strip() == "Total Return":  # cumulative % since start of export
@@ -86,6 +101,15 @@ def build():
     for t, idx in tr.items():  # use the total-return index in place of the price series for that ticker
         px[t] = idx
     (DATA / "tr_tickers.json").write_text(json.dumps(sorted(tr)))
+    measured = {}
+    for name, (sheet, perf) in weekly.items():
+        t = next((tk for kw, tk in ROLLING_NAMES if kw in sheet.upper()), None)
+        if t is None or t not in px:
+            print(f"  skipped {name}: cannot map sheet '{sheet}' to a ticker"); continue
+        wk = px[t].dropna().reindex(perf.index, method="ffill").pct_change()
+        y = float((perf - wk).dropna().mean() * 52)
+        measured[t] = round(y, 4); print(f"  {t}: measured income {y:.2%} a year from weekly total return ({name})")
+    (DATA / "measured_income.json").write_text(json.dumps(measured))
     pd.DataFrame(px).to_csv(DATA / "prices.csv")
     pd.DataFrame(rt).to_csv(DATA / "rates.csv")
     print("built", sorted(px), sorted(rt))
@@ -115,6 +139,8 @@ def add_income(rets, rf, assumptions):
     rets = rets.copy()
     f = DATA / "tr_tickers.json"
     have_tr = set(json.loads(f.read_text())) if f.exists() else set()
+    m = DATA / "measured_income.json"
+    assumptions = {**assumptions, **(json.loads(m.read_text()) if m.exists() else {})}
     assumptions = {t: y for t, y in assumptions.items() if t not in have_tr}
     if "SHV" in rets and "SHV" not in have_tr:
         # price series has monthly ex-div drops (fake noise), so model SHV purely as T-bill carry
