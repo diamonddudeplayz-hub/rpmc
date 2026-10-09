@@ -56,6 +56,35 @@ def fetch(years):
     print(f"wrote {DATA/'prices.csv'} and {DATA/'rates.csv'}")
 
 
+XLSX_DIR = HERE.parent  # LSEG Workspace exports sit in the repo root
+RATE_FILES = {"us 3m.xlsx": "DGS3MO", "us 2y.xlsx": "DGS2", "us10y.xlsx": "DGS10"}
+
+
+def read_lseg(path):
+    """LSEG 'Table Data' export: row0 = header, row1 = 'Close', data below, newest first."""
+    df = pd.read_excel(path, header=None, skiprows=2)
+    s = pd.Series(df[1].astype(float).values, index=pd.to_datetime(df[0]))
+    return s[~s.index.duplicated()].sort_index()
+
+
+def build():
+    px, rt = {}, {}
+    for f in sorted(XLSX_DIR.glob("*.xlsx")):
+        hdr = pd.read_excel(f, header=None, nrows=1).iloc[0, 1]
+        ric = str(hdr).split(" ")[0]
+        s = read_lseg(f)
+        if f.name in RATE_FILES:
+            rt[RATE_FILES[f.name]] = s
+        elif ric == "CAD=":
+            px["USDCAD"] = s
+        else:
+            px[ric.split(".")[0] if ric.endswith((".O", ".K")) else ric] = s
+    DATA.mkdir(exist_ok=True)
+    pd.DataFrame(px).to_csv(DATA / "prices.csv")
+    pd.DataFrame(rt).to_csv(DATA / "rates.csv")
+    print("built", sorted(px), sorted(rt))
+
+
 def load_data(years):
     px = pd.read_csv(DATA / "prices.csv", index_col=0, parse_dates=True).sort_index()
     rates = pd.read_csv(DATA / "rates.csv", index_col=0, parse_dates=True).sort_index()
@@ -72,6 +101,19 @@ def to_cad(px):
         if not t.endswith(CAD_LISTED_SUFFIXES):
             out[t] = out[t] * fx
     return out
+
+
+def add_income(rets, rf, assumptions):
+    """LSEG TRDPRC_1 is price-only. Add distribution income as a daily accrual.
+    SHV = T-bill yield less 0.15% fee (it is the risk-free asset). Others = constant yield assumptions."""
+    rets = rets.copy()
+    if "SHV" in rets:
+        # price series has monthly ex-div drops (fake noise), so model SHV purely as T-bill carry
+        rets["SHV"] = (rf * 252 - 0.0015).clip(lower=0) / 252
+    for t, y in assumptions.items():
+        if t in rets:
+            rets[t] += y / 252
+    return rets
 
 
 def sharpe(excess, total):
@@ -112,6 +154,10 @@ def report(px, rates, args, portfolios):
     rf = (rates["DGS3MO"].reindex(rets.index).ffill().bfill() / 100) / 252
     cutoff = rets.index[-1] - pd.DateOffset(years=args.years)
     rets, rf = rets[rets.index > cutoff], rf[rf.index > cutoff]
+    income = json.loads((HERE / "income_assumptions.json").read_text()) if args.income else {}
+    rets = add_income(rets, rf, income)
+    print("Income handling: SHV accrues T-bill yield" + (f"; plus assumed yields {income}" if income else
+          "; all other tickers PRICE-ONLY (distributions ignored)"))
     ratesig = rates[args.rate]
     labels = label_blocks(ratesig, rets.index, args.block, args.thresh)
 
@@ -144,6 +190,26 @@ def report(px, rates, args, portfolios):
     fmt["days"] = fmt["days"].map(lambda v: "" if pd.isna(v) else int(v))
     print("\n(MaxDD row: value is in the ann_ret column)\n" + fmt.to_string(index=False))
 
+    win = 105  # trading days, Oct 9 -> Mar 12
+    print(f"\nRolling {win}-trading-day Sharpe (what a competition-length window looks like):")
+    roll = {}
+    for name, r in series.items():
+        ex = r - rf.reindex(r.index)
+        roll[name] = (ex.rolling(win).mean() / r.rolling(win).std() * np.sqrt(252)).dropna()
+    for name, v in roll.items():
+        q = v.quantile([.1, .5, .9])
+        print(f"  {name:15s} p10 {q[.1]:6.2f}  median {q[.5]:6.2f}  p90 {q[.9]:6.2f}   share of windows with Sharpe<0: {(v<0).mean():.0%}")
+    first = list(portfolios)[0]
+    for name in list(portfolios) + ["SPY"]:
+        j = roll[name].align(roll["RPMC Benchmark"], join="inner")
+        print(f"  {name} beats RPMC Benchmark in {(j[0] > j[1]).mean():.0%} of windows")
+
+    print("\nStandalone holdings (CAD, ann.):")
+    allt = sorted({t for w in portfolios.values() for t in w} | set(BENCHMARK))
+    for t in allt:
+        st = stats(rets[t], rf)
+        print(f"  {t:7s} ret {st['ann_ret']:6.1%}  vol {st['ann_vol']:6.1%}  Sharpe {st['sharpe']:5.2f}")
+
     names = list(portfolios)[0]
     cols = [t for t in portfolios[names]]
     corr = rets[cols].corr()
@@ -164,13 +230,14 @@ def selftest():
                           "DGS2": 4 + np.cumsum(rng.normal(0, 0.04, len(idx))),
                           "DGS10": 4 + np.cumsum(rng.normal(0, 0.05, len(idx)))}, index=idx)
     print("*** SYNTHETIC RANDOM DATA: pipeline check only, numbers mean nothing ***")
-    args = argparse.Namespace(years=3, rate="DGS10", block=63, thresh=0.25)
+    args = argparse.Namespace(years=3, rate="DGS10", block=63, thresh=0.25, income=False)
     report(px, rates, args, {"current_8": load_portfolio("current_8")})
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["fetch", "run", "selftest"])
+    ap.add_argument("cmd", choices=["fetch", "build", "run", "selftest"])
+    ap.add_argument("--income", action="store_true", help="add assumed distribution yields (income_assumptions.json)")
     ap.add_argument("--years", type=int, default=3)
     ap.add_argument("--rate", default="DGS10", choices=["DGS3MO", "DGS2", "DGS10"],
                     help="yield used to label rising/falling blocks")
@@ -180,6 +247,8 @@ def main():
     args = ap.parse_args()
     if args.cmd == "fetch":
         fetch(args.years)
+    elif args.cmd == "build":
+        build()
     elif args.cmd == "selftest":
         selftest()
     else:
