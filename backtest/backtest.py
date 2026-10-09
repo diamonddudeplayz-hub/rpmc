@@ -68,11 +68,14 @@ def read_lseg(path):
 
 
 def build():
-    px, rt = {}, {}
+    px, rt, tr = {}, {}, {}
     for f in sorted(XLSX_DIR.glob("*.xlsx")):
-        hdr = pd.read_excel(f, header=None, nrows=1).iloc[0, 1]
-        ric = str(hdr).split(" ")[0]
+        head = pd.read_excel(f, header=None, nrows=2)
+        ric = str(head.iloc[0, 1]).split(" ")[0]
         s = read_lseg(f)
+        if str(head.iloc[1, 1]).strip() == "Total Return":  # cumulative % since start of export
+            tr[ric] = 1 + s / 100
+            continue
         if f.name in RATE_FILES:
             rt[RATE_FILES[f.name]] = s
         elif ric == "CAD=":
@@ -80,6 +83,9 @@ def build():
         else:
             px[ric.split(".")[0] if ric.endswith((".O", ".K")) else ric] = s
     DATA.mkdir(exist_ok=True)
+    for t, idx in tr.items():  # use the total-return index in place of the price series for that ticker
+        px[t] = idx
+    (DATA / "tr_tickers.json").write_text(json.dumps(sorted(tr)))
     pd.DataFrame(px).to_csv(DATA / "prices.csv")
     pd.DataFrame(rt).to_csv(DATA / "rates.csv")
     print("built", sorted(px), sorted(rt))
@@ -107,7 +113,10 @@ def add_income(rets, rf, assumptions):
     """LSEG TRDPRC_1 is price-only. Add distribution income as a daily accrual.
     SHV = T-bill yield less 0.15% fee (it is the risk-free asset). Others = constant yield assumptions."""
     rets = rets.copy()
-    if "SHV" in rets:
+    f = DATA / "tr_tickers.json"
+    have_tr = set(json.loads(f.read_text())) if f.exists() else set()
+    assumptions = {t: y for t, y in assumptions.items() if t not in have_tr}
+    if "SHV" in rets and "SHV" not in have_tr:
         # price series has monthly ex-div drops (fake noise), so model SHV purely as T-bill carry
         rets["SHV"] = (rf * 252 - 0.0015).clip(lower=0) / 252
     for t, y in assumptions.items():

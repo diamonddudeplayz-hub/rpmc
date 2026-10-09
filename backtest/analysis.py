@@ -81,6 +81,20 @@ def main():
         print("\nContribution to annual return (weight x own return):")
         print("  " + "   ".join(f"{t} {w[t] * ann[t]:+.1%}" for t in w.sort_values(ascending=False).index))
 
+    # 5b. GLD: is it low vol, and does it protect on bad days?
+    rets5, rf5 = prepare(5)
+    px = bt.to_cad(bt.load_data(5)[0]).dropna()
+    spy_bad = rets5["SPY"].nsmallest(int(len(rets5) * 0.05)).index
+    print("\n################ GLD check (CAD, 5y data)")
+    for t in ("GLD", "SPY", "XLV", "NVDA"):
+        r = rets5[t]
+        print(f"  {t:4s} vol {r.std()*np.sqrt(252):5.1%}   avg return on SPY's worst 5% days {r[spy_bad].mean():+.2%}   max drawdown {bt.max_drawdown(r):.1%}   2026 YTD {((1+r[r.index.year==2026]).prod()-1):+.1%}")
+    g = px["GLD"]
+    sep3 = g.loc[:"2026-09-03"].iloc[-1]
+    print(f"  GLD (USD-listed, CAD terms) change since 2026-09-03: {g.iloc[-1]/sep3-1:+.1%};  USD price {g.iloc[-1]:.2f} (CAD {px['GLD'].iloc[-1]:.0f})")
+    gu = bt.load_data(5)[0]["GLD"].dropna()
+    print(f"  GLD USD price: Sep 3 {gu.loc[:'2026-09-03'].iloc[-1]:.2f} -> Oct 8 {gu.iloc[-1]:.2f}   ({gu.iloc[-1]/gu.loc[:'2026-09-03'].iloc[-1]-1:+.1%}); 52w high {gu.iloc[-252:].max():.2f}, low {gu.iloc[-252:].min():.2f}")
+
     # 6. Hormuz event study (5y data covers the whole war)
     rets, rf = prepare(5)
     port = bt.port_returns(rets, book)

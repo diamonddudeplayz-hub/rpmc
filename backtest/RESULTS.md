@@ -5,8 +5,8 @@ Reproduce: `cd backtest && python backtest.py build && python backtest.py run --
 
 | | Portfolio Sharpe | RPMC Benchmark Sharpe | SPY Sharpe |
 |---|---|---|---|
-| 5 years | 1.51 | 0.88 | 0.85 |
-| 2 years | 1.14 | 1.23 | 0.98 |
+| 5 years | 1.55 | 0.88 | 0.85 |
+| 2 years | 1.15 | 1.23 | 0.98 |
 
 Rolling 105-day windows (the length of the competition): portfolio median Sharpe 1.59 (5y) / 0.83 (2y);
 it beats the benchmark in 72% of windows over 5y but only 37% over 2y.
@@ -25,7 +25,16 @@ TBF effect (current_8 vs the same book with SHV instead of TBF): +0.3 Sharpe in 
 ## Follow-up (`python analysis.py`)
 - Risk is concentrated: ITRI + NVDA + AVGO = ~80% of portfolio variance on 37% of the weight. GLD, XLV, TBF, SHV are ~0-6% each.
 - ITRI is not low-vol (41% vs LNG 30%). Inverse-vol sizing would put LNG above ITRI. Pitch ITRI as conviction/catalyst-sized, not vol-sized.
-- SHV does not change Sharpe (1.51 vs 1.52 without it): mixing in the risk-free asset scales return and vol equally.
+- SHV barely changes Sharpe (1.55 with, 1.52 without; 2y 1.15 vs 1.14). Using the real SHV total-return export (not the T-bill carry model): in CAD terms SHV has ~6% vol from USDCAD, so it is not risk-free if the platform scores in CAD.
 - Hormuz headline days (9 days from the pasted tracker): LNG +3.1% avg on escalation, -3.2% on de-escalation; TBF +0.9 / -0.6; GLD -0.4 / +1.1.
   Portfolio net: +0.5% / +0.2%, so roughly neutral to headlines.
 - Sharpe by year, portfolio vs benchmark: 2022 0.29 vs -0.95, 2023 2.62 vs 1.14, 2024 3.03 vs 2.15, 2025 0.68 vs 1.32, 2026 YTD 1.21 vs 1.10.
+
+## Update: real SHV total return, GLD, ITRI
+- `shv total return.xlsx` (cumulative TR %, +19.19% over 5y; my carry model gave +20.5%) is now used for SHV. Other tickers still price-only + assumed yields.
+- GLD: vol 18% (5y) / 23% (2y), above SPY's. It is a diversifier, not low-vol: avg +0.2% on SPY's worst 5% days (SPY -2.2%, NVDA -4.6%). -7.7% since Sep 3 ($410 -> $379); 52w range $362-$496.
+- Variants (Sharpe 5y/2y, max drawdown 5y): current 1.55/1.15, -13.4%; SHV 10 + GLD 20: 1.58/1.20, -13.0%;
+  AVGO->XIC.TO 12 + SHV 10 + GLD 20: 1.49/1.18, -9.6%. Benchmark 0.88/1.23.
+- ITRI biggest daily moves, last 2y: +26.2% (2026-07-28), -21.1% (2025-10-30), -10.0% (2025-07-31). At 15% weight a -21% day is -3.2% of the portfolio.
+  Now $84.23 vs $107.02 on Jul 28 and $99.66 on Jul 31.
+- No ADBE price file in the repo yet, so ADBE vol/correlation is untested.
